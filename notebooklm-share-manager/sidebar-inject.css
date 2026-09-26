@@ -1,0 +1,92 @@
+/* ── 右緣頁籤：點一下開闔浮動視窗，可上下拖曳（比照 CAAC 名單通知）──────────── */
+#nlm-sm-toggle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 5px;
+  background: #1976d2;
+  color: #fff;
+  font: 700 13px/1.3 "Microsoft JhengHei", "Google Sans", sans-serif;
+  letter-spacing: 2px;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  box-shadow: -2px 2px 12px rgba(0,0,0,.28);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  transition: background .15s, padding-right .15s;
+  user-select: none;
+}
+#nlm-sm-toggle:hover { background: #1565c0; padding-right: 9px; }
+#nlm-sm-toggle.open  { background: #0d47a1; }
+#nlm-sm-toggle .nlm-sm-ico { writing-mode: horizontal-tb; font-size: 15px; letter-spacing: 0; }
+
+/* ── 浮動視窗 ─────────────────────────────────────────────────────────────── */
+#nlm-sm-panel {
+  position: fixed;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  min-width: 340px;
+  background: #1E2433;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+#nlm-sm-panel[hidden] { display: none !important; }
+
+#nlm-sm-panel .nlm-sm-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  background: #1976d2;
+  color: #fff;
+  font: 700 14px/1.2 "Microsoft JhengHei", "Google Sans", sans-serif;
+  cursor: move;
+  user-select: none;
+}
+#nlm-sm-panel .nlm-sm-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nlm-sm-panel .nlm-sm-ver   { font-style: normal; font-weight: 400; font-size: 11px; opacity: .75; margin-left: 2px; }
+#nlm-sm-panel .nlm-sm-btn {
+  cursor: pointer;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  opacity: .9;
+  text-decoration: none;
+}
+#nlm-sm-panel .nlm-sm-btn:hover { background: rgba(255,255,255,.22); opacity: 1; }
+
+#nlm-sm-sidebar {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  background: transparent;
+}
+
+/* 右下角拉把：疊在 iframe 上方，否則滑鼠事件會被 iframe 吃掉 */
+#nlm-sm-panel .nlm-sm-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 1;
+  background: linear-gradient(135deg, transparent 55%, rgba(255,255,255,.4) 55%, rgba(255,255,255,.4) 65%, transparent 65%, transparent 78%, rgba(255,255,255,.4) 78%, rgba(255,255,255,.4) 88%, transparent 88%);
+}
+
+/* 縮小：只留標題列（iframe 仍在 DOM，還原時不必重新讀取） */
+#nlm-sm-panel.mini { height: auto !important; }
+#nlm-sm-panel.mini #nlm-sm-sidebar,
+#nlm-sm-panel.mini .nlm-sm-grip { display: none; }

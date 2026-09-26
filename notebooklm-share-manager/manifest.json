@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "NotebookLM Share Manager",
+  "version": "2.0.1",
+  "description": "管理 NotebookLM 筆記本的分享用戶：新增、刪除、修改權限，支援 CSV 批次匯入｜v2.0：改走 NotebookLM 內部 API 一次讀取全部名單（不再開分享框逐筆捲動），浮動視窗可拖曳／縮小／調整大小",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://notebooklm.google.com/*",
+    "https://notebook.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://notebooklm.google.com/notebook/*",
+        "https://notebook.google.com/notebook/*"
+      ],
+      "js": ["inject-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://notebooklm.google.com/notebook/*",
+        "https://notebook.google.com/notebook/*"
+      ],
+      "js": ["content.js"],
+      "css": ["sidebar-inject.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "sidebar.html", "sidebar.css", "sidebar.js", "xlsx.mini.min.js", "icons/*.png"
+      ],
+      "matches": [
+        "https://notebooklm.google.com/*",
+        "https://notebook.google.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "NotebookLM Share Manager",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

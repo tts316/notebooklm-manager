@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotebookLM Share Manager</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect width="24" height="24" rx="6" fill="#4F86F7"/>
+        <path d="M6 7h12M6 12h8M6 17h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="header-info">
+      <div class="header-title">Share Manager</div>
+      <div class="header-subtitle" id="notebookName">載入中…</div>
+    </div>
+    <button class="btn-icon refresh-btn" id="refreshBtn" title="重新整理">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      </svg>
+    </button>
+    <button class="btn-icon close-btn" id="closeBtn" title="關閉">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Error state -->
+  <div id="errorState" class="center-state hidden">
+    <div class="state-icon">⚠️</div>
+    <div class="state-title" id="errorTitle">發生錯誤</div>
+    <div class="state-desc" id="errorDesc"></div>
+    <button class="btn btn-primary" id="retryBtn" style="margin-top:14px">重試</button>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent" class="hidden">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="users">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        分享用戶
+        <span class="tab-badge" id="userCount"></span>
+      </button>
+      <button class="tab" data-tab="import">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        CSV 批次
+      </button>
+    </div>
+
+    <!-- ── Tab: Users ──────────────────────────────────────────────────────── -->
+    <div id="tabUsers" class="tab-content">
+
+      <div class="action-bar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="搜尋 email 或姓名…">
+          <button class="btn-icon-sm clear-search hidden" id="clearSearch">×</button>
+        </div>
+        <button class="btn btn-ghost" id="exportBtn" title="匯出分享清單 CSV">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          匯出
+        </button>
+        <button class="btn btn-primary" id="addUserBtn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          新增
+        </button>
+      </div>
+
+      <!-- Add form -->
+      <div id="addUserForm" class="inline-form hidden">
+        <div class="inline-form-title">新增分享用戶</div>
+        <input type="email" id="newEmail" class="input" placeholder="Google 帳號電子郵件" autocomplete="off">
+        <div id="emailError" class="field-error hidden"></div>
+        <select id="newRole" class="select">
+          <option value="reader">檢視者 — 只能閱讀</option>
+          <option value="commenter">留言者 — 可以留言</option>
+          <option value="writer">編輯者 — 可以編輯</option>
+        </select>
+        <div class="form-actions">
+          <button class="btn btn-ghost" id="cancelAddBtn">取消</button>
+          <button class="btn btn-primary" id="confirmAddBtn">新增用戶</button>
+        </div>
+      </div>
+
+      <!-- Users list -->
+      <div id="usersList" class="users-list">
+        <div class="loading-row"><div class="spinner"></div><span>載入中…</span></div>
+      </div>
+
+      <div id="noUsers"   class="empty-row hidden">尚無其他分享用戶</div>
+      <div id="noResults" class="empty-row hidden">找不到符合的用戶</div>
+
+    </div>
+
+    <!-- ── Tab: CSV ────────────────────────────────────────────────────────── -->
+    <div id="tabImport" class="tab-content hidden">
+      <div class="import-section">
+
+        <div class="section-label">CSV 格式說明</div>
+        <div class="code-block">
+          <span class="code-comment"># email,role,action</span><br>
+          <span class="code-comment"># role: reader / commenter / writer</span><br>
+          <span class="code-comment"># action: add / update / remove</span><br>
+          alice@example.com,reader,add<br>
+          bob@example.com,writer,update<br>
+          charlie@example.com,,remove
+        </div>
+
+        <div id="dropZone" class="drop-zone">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div class="drop-title">拖曳 .csv 至此</div>
+          <button class="btn btn-secondary" id="browseBtn">選擇檔案</button>
+          <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none">
+        </div>
+
+        <div id="csvPreview" class="hidden">
+          <div class="preview-header">
+            <span class="section-label" style="margin:0">預覽</span>
+            <div style="display:flex;gap:4px">
+              <span class="badge badge-green" id="validCount">0 有效</span>
+              <span class="badge badge-red hidden" id="errorCount">0 錯誤</span>
+            </div>
+          </div>
+          <div id="csvTableWrap" class="csv-table-wrap"></div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" id="cancelCsvBtn">取消</button>
+            <button class="btn btn-primary" id="applyCsvBtn">套用變更</button>
+          </div>
+        </div>
+
+        <div id="batchResult" class="hidden">
+          <div class="preview-header">
+            <span class="section-label" style="margin:0">執行結果</span>
+          </div>
+          <div id="resultTableWrap" class="csv-table-wrap"></div>
+          <button class="btn btn-secondary full-width" id="closeBatchBtn" style="margin-top:8px">關閉</button>
+        </div>
+
+        <div class="divider"></div>
+        <button class="btn btn-outline full-width" id="downloadTemplateBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          下載 CSV 範本
+        </button>
+
+        <div class="divider"></div>
+        <div class="section-label">聯絡人姓名</div>
+        <p class="contacts-hint">上傳 Google 聯絡人匯出 CSV，分享清單自動帶入姓名與標籤；資料存於本機，重開 Chrome 不需重新載入</p>
+        <div id="contactsStatus" class="contacts-status hidden" style="margin:6px 0"></div>
+        <div id="contactsDropZone" class="drop-zone" style="padding:12px;margin-top:4px">
+          <div class="drop-title" style="font-size:11px">拖曳 Google 聯絡人匯出 .csv 至此</div>
+          <button class="btn btn-ghost" id="browseContactsBtn" style="font-size:11px;padding:4px 10px">選擇檔案</button>
+          <input type="file" id="contactsCsvInput" accept=".csv,text/csv" style="display:none">
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-label">依標籤同步分享清單</div>
+        <p class="contacts-hint">掃描聯絡人中標籤為「0待刪除名單」的成員，已在分享清單者移除，未在清單者以檢視者加入，產生預覽後再確認套用</p>
+        <button class="btn btn-secondary full-width" id="syncByLabelBtn" style="margin-top:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 4v6h6M23 20v-6h-6"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+          產生同步預覽
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="xlsx.mini.min.js"></script>
+  <script src="sidebar.js"></script>
+</body>
+</html>

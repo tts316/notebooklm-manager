@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="28" fill="#4F86F7"/>
+  <!-- Notebook lines -->
+  <rect x="28" y="36" width="72" height="10" rx="5" fill="white" opacity="0.95"/>
+  <rect x="28" y="56" width="52" height="10" rx="5" fill="white" opacity="0.95"/>
+  <rect x="28" y="76" width="62" height="10" rx="5" fill="white" opacity="0.95"/>
+  <!-- Share person icon -->
+  <circle cx="95" cy="88" r="18" fill="#22C55E"/>
+  <circle cx="95" cy="84" r="5" fill="white"/>
+  <path d="M83 99c0-6.627 5.373-10 12-10s12 3.373 12 10" fill="white"/>
+</svg>
