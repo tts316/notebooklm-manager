@@ -92,9 +92,9 @@ test('批次：移除／改權限／新增一次處理，成敗依回讀結果�
   assert.deepStrictEqual(res.map(r => r.line), [1, 2, 3, 4, 5, 6, 7]);
 });
 
-test('批次：超過分享上限的新增回報 skipped，不送出', async () => {
+test('批次：超過分享上限的新增回報 skipped，不送出（擁有者不計入上限）', async () => {
   const ctx = load();
-  const { calls } = fakeServer(ctx, [['owner@x.com', 1, [], null], ['a@x.com', 3, [], null]], { limit: 3 });
+  const { calls } = fakeServer(ctx, [['owner@x.com', 1, [], null], ['a@x.com', 3, [], null]], { limit: 2 });
   const res = await ctx.apiBatchProcess([
     { _line: 1, action: 'add', email: 'n1@x.com', role: 'reader' },
     { _line: 2, action: 'add', email: 'n2@x.com', role: 'reader' },
@@ -102,6 +102,17 @@ test('批次：超過分享上限的新增回報 skipped，不送出', async () 
   assert.deepStrictEqual(res.map(r => r.status), ['success', 'skipped']);
   const sentEmails = calls.filter(c => c.rpcid === 'QDyure').flatMap(c => c.params[0][0][1].map(e => e[0]));
   assert.deepStrictEqual(sentEmails, ['n1@x.com']);
+});
+
+test('API 回報上限 1000 也以 300 為準（實測非擁有者第 301 人整包回 [3]）', async () => {
+  const ctx = load();
+  const users = [['owner@x.com', 1, [], null]];
+  for (let n = 0; n < 300; n++) users.push(['p' + n + '@x.com', 3, [], null]);
+  const { calls } = fakeServer(ctx, users, { limit: 1000 });
+  const res = await ctx.apiBatchProcess([{ _line: 1, action: 'add', email: 'new@x.com', role: 'reader' }])
+    .then(r => JSON.parse(JSON.stringify(r)));
+  assert.strictEqual(res[0].status, 'skipped');
+  assert.strictEqual(calls.filter(c => c.rpcid === 'QDyure').length, 0);
 });
 
 test('寫入時 RPC 回錯誤碼但回讀已生效 → 判成功（不可只看 RPC 回應）', async () => {

@@ -1300,7 +1300,8 @@ async function apiShareStatus() {
       name: (Array.isArray(r[3]) && r[3][0]) || r[0],
       role: PERM_TO_ROLE[r[1]] || 'reader',
     }));
-  return { users, limit: typeof data[2] === 'number' ? data[2] : SHARE_LIMIT };
+  // API 回報的上限（maxIndividualsShareLimit）大於實際可分享人數；2026-10-05 實測非擁有者第 301 人即整包回 [3]，取兩者較小值
+  return { users, limit: Math.min(typeof data[2] === 'number' ? data[2] : SHARE_LIMIT, SHARE_LIMIT) };
 }
 
 function shareParams(entries, notify, msgBlock) {
@@ -1355,7 +1356,7 @@ async function apiBatchProcess(rows) {
 
   // 新增：依分享上限裁切，分批送出並寄通知信（與分享框預設勾選「通知使用者」一致）
   const adds = [];
-  let count = current.size;
+  let count = [...current.values()].filter(u => u.role !== 'owner').length; // 上限只計非擁有者
   for (const r of rows.filter(r => r.action === 'add')) {
     const email = r.email.toLowerCase();
     if (seen.has(email))     { push(r, 'error', 'CSV 內重複'); continue; }

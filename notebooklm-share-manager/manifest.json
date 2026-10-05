@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NotebookLM Share Manager",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "管理 NotebookLM 筆記本的分享用戶：新增、刪除、修改權限，支援 CSV 批次匯入｜v2.0：改走 NotebookLM 內部 API 一次讀取全部名單（不再開分享框逐筆捲動），浮動視窗可拖曳／縮小／調整大小",
   "permissions": [
     "storage",
