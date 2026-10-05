@@ -513,6 +513,7 @@ function renderBatchResult(results) {
   const ok      = results.filter(r => r.status==='success').length;
   const err     = results.filter(r => r.status==='error').length;
   const skipped = results.filter(r => r.status==='skipped').length;
+  window.__nlmLastBatch = { ok, err, skipped, results };   // 供排程讀取執行結果
 
   if (skipped) {
     // Hit the 300-person cap — surface a prominent warning with the count.
@@ -593,6 +594,30 @@ function syncSharingByLabels() {
     }
     // Rule 3: already sharing with other labels, or no labels → no change
   }
+
+  // Rule 4: 分享上限 300 人（不含擁有者）。新增超出名額時，先排除標籤含「外語」單位的新進者
+  // （到職日由新到舊），全排除仍超出則其餘新增也不加入；被排除者標錯誤列、不送出，預覽中可見。
+  const SHARE_CAP = 300, FOREIGN_LANG = '外語';
+  const removes = rows.filter(r => r.action === 'remove').length;
+  const room = SHARE_CAP - (allPermissions.filter(p => p.role !== 'owner').length - removes);
+  const adds = rows.filter(r => r.action === 'add');
+  let capped = { foreign: 0, other: 0 };
+  if (adds.length > room) {
+    const info = e => (typeof contactsMap[e] === 'object' ? contactsMap[e] : {});
+    const isForeign = r => (info(r.email).labels || []).some(l => l.includes(FOREIGN_LANG));
+    const hired = r => info(r.email).joinDate || '9999/99/99';   // 沒到職日視為最新
+    // 名額優先給非外語，其次外語依到職日由舊到新；排在名額之後的就是要排除的
+    const ordered = [...adds.filter(r => !isForeign(r)),
+                     ...adds.filter(isForeign).sort((a, b) => hired(a).localeCompare(hired(b)))];
+    for (const r of ordered.slice(Math.max(room, 0))) {
+      const f = isForeign(r);
+      capped[f ? 'foreign' : 'other']++;
+      r._errors.push(f ? `超過分享上限 ${SHARE_CAP} 人，外語單位新進者暫不加入`
+                       : `超過分享上限 ${SHARE_CAP} 人，名額不足未加入（需人工處理）`);
+    }
+  }
+  // 供排程（⑮ notebooklm/nlm_sync.py）讀取本次判定結果
+  window.__nlmLastSync = { removes, adds: adds.length, room, capped };
 
   if (!rows.length) {
     showToast('沒有需要同步的項目', 'info'); return;
