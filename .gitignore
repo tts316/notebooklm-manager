@@ -1,0 +1,6 @@
+# Windows 資料夾設定檔
+desktop.ini
+
+# Google 通訊錄匯出檔含個資（姓名／email／到職日），本 repo 為 PUBLIC，絕不可提交
+Google通訊錄*.csv
+*.vcf
