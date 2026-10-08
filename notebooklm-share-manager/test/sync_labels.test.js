@@ -52,7 +52,7 @@ test('超過 300：外語新進者依到職日由新到舊排除，非外語優�
     'f_new@x.com': c(['聯成_外語業務一處'], '2026/09/01'),
     'tw@x.com': c(['聯成_台南'], '2026/10/01'),
   };
-  const rows = run(ctx, [owner, ...shared(298)], contacts);   // 名額剩 2，要加 3 人
+  const rows = run(ctx, [owner, ...shared(297)], contacts);   // 上限 299，名額剩 2，要加 3 人
   const err = Object.fromEntries(rows.map(r => [r.email, r._errors.join()]));
   assert.strictEqual(err['tw@x.com'], '');
   assert.strictEqual(err['f_old@x.com'], '');
@@ -62,7 +62,7 @@ test('超過 300：外語新進者依到職日由新到舊排除，非外語優�
 
 test('移除會騰出名額；外語全排仍不足時非外語也依到職日暫緩', () => {
   const ctx = load();
-  const perms = [owner, ...shared(300)];
+  const perms = [owner, ...shared(299)];
   const contacts = { 's0@x.com': c(['0待刪除名單']), 'a@x.com': c(['聯成_台南']), 'b@x.com': c(['聯成_高雄']), 'f@x.com': c(['聯成_外語部']) };
   const rows = run(ctx, perms, contacts);   // 移除 1 → 名額 1，要加 3（1 外語）
   const errs = rows.filter(r => r._errors.length).map(r => r._errors[0]);
@@ -74,7 +74,7 @@ test('非外語新進者超額時，最新到職者先暫緩', () => {
   const ctx = load();
   const contacts = { 'old@x.com': c(['聯成_台南'], '2026/09/01'), 'new@x.com': c(['聯成_板橋'], '2026/10/07'),
                      'mid@x.com': c(['聯成_高雄'], '2026/09/15') };
-  const rows = run(ctx, [owner, ...shared(298)], contacts);   // 名額剩 2，要加 3 人
+  const rows = run(ctx, [owner, ...shared(297)], contacts);   // 上限 299，名額剩 2，要加 3 人
   const err = Object.fromEntries(rows.map(r => [r.email, r._errors.join()]));
   assert.strictEqual(err['old@x.com'], '');
   assert.strictEqual(err['mid@x.com'], '');

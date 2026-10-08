@@ -627,10 +627,12 @@ function syncSharingByLabels() {
     // Rule 3: already sharing with other labels, or no labels → no change
   }
 
-  // Rule 4: 分享上限 300 人（不含擁有者），先移除（Rule 1）騰出名額再算。新增超出名額時：
+  // Rule 4: 分享上限：非擁有者最多 299 人（＝含擁有者 300），先移除（Rule 1）騰出名額再算。
+  // 2026-10-08 實測：非擁有者 299 人時再加第 300 位，API 回讀未生效、介面也擋（10/05 曾有 300 人，
+  // 推測 Google 計入擁有者或已調整）；取保守值，寧可少一格也不要排程每晚報失敗。新增超出名額時：
   // 先排除標籤含「外語」單位的新進者，仍超出再排除其他新進者，兩者都依到職日由新到舊排除
   // （使用者規則 2026-10-08）；被排除者標錯誤列、不送出，預覽中可見。
-  const SHARE_CAP = 300, FOREIGN_LANG = '外語';
+  const SHARE_CAP = 299, FOREIGN_LANG = '外語';
   const removes = rows.filter(r => r.action === 'remove').length;
   const room = SHARE_CAP - (allPermissions.filter(p => p.role !== 'owner').length - removes);
   const adds = rows.filter(r => r.action === 'add');
