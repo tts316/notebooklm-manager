@@ -84,6 +84,26 @@ async function apiCall(data) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+const ALLOWED_NOTEBOOK = '聯成人AI';
+
+// 向外層頁面（content.js）查詢筆記本標題；標題可能晚於側欄載入，最多等 15 秒
+function getNotebookTitle() {
+  return new Promise(resolve => {
+    let tries = 0, last = '';
+    const onMsg = e => {
+      if (e.data && typeof e.data.nlmSmTitle === 'string') {
+        last = e.data.nlmSmTitle;
+        if (last.includes(ALLOWED_NOTEBOOK)) { done(); }
+      }
+    };
+    const done = () => { clearInterval(timer); window.removeEventListener('message', onMsg); resolve(last); };
+    window.addEventListener('message', onMsg);
+    const ask = () => { if (++tries > 30) done(); else window.parent.postMessage('nlm-sm-title?', '*'); };
+    const timer = setInterval(ask, 500);
+    ask();
+  });
+}
+
 async function init() {
   const params = new URLSearchParams(location.search);
   const notebookId = params.get('notebookId');
@@ -94,6 +114,14 @@ async function init() {
   }
 
   $('notebookName').textContent = notebookId.slice(0, 8) + '…';
+
+  // 本擴充程式僅限「聯成人AI」筆記本使用（使用者規則 2026-10-08）：其他筆記本不載入名單、不能操作
+  const title = await getNotebookTitle();
+  window.__nlmNotebookOk = title.includes(ALLOWED_NOTEBOOK);
+  if (!window.__nlmNotebookOk) {
+    showError(`本擴充程式僅限「${ALLOWED_NOTEBOOK}」筆記本使用`, `目前筆記本：${title || '（讀不到標題）'}`);
+    return;
+  }
 
   // Load cached contacts before rendering so names appear immediately
   await loadContactsFromStorage();
@@ -565,6 +593,10 @@ function resetCSV() {
 //         (NotebookLM sends the invite email automatically when adding)
 // Rule 3: anything else (already sharing, or no label) → no change
 function syncSharingByLabels() {
+  if (!window.__nlmNotebookOk) {
+    window.__nlmLastSync = { blocked: true };
+    showToast(`僅限「${ALLOWED_NOTEBOOK}」筆記本使用`, 'error'); return;
+  }
   if (!Object.keys(contactsMap).length) {
     showToast('請先載入聯絡人 CSV', 'error'); return;
   }
@@ -595,8 +627,9 @@ function syncSharingByLabels() {
     // Rule 3: already sharing with other labels, or no labels → no change
   }
 
-  // Rule 4: 分享上限 300 人（不含擁有者）。新增超出名額時，先排除標籤含「外語」單位的新進者
-  // （到職日由新到舊），全排除仍超出則其餘新增也不加入；被排除者標錯誤列、不送出，預覽中可見。
+  // Rule 4: 分享上限 300 人（不含擁有者），先移除（Rule 1）騰出名額再算。新增超出名額時：
+  // 先排除標籤含「外語」單位的新進者，仍超出再排除其他新進者，兩者都依到職日由新到舊排除
+  // （使用者規則 2026-10-08）；被排除者標錯誤列、不送出，預覽中可見。
   const SHARE_CAP = 300, FOREIGN_LANG = '外語';
   const removes = rows.filter(r => r.action === 'remove').length;
   const room = SHARE_CAP - (allPermissions.filter(p => p.role !== 'owner').length - removes);
@@ -606,14 +639,15 @@ function syncSharingByLabels() {
     const info = e => (typeof contactsMap[e] === 'object' ? contactsMap[e] : {});
     const isForeign = r => (info(r.email).labels || []).some(l => l.includes(FOREIGN_LANG));
     const hired = r => info(r.email).joinDate || '9999/99/99';   // 沒到職日視為最新
-    // 名額優先給非外語，其次外語依到職日由舊到新；排在名額之後的就是要排除的
-    const ordered = [...adds.filter(r => !isForeign(r)),
-                     ...adds.filter(isForeign).sort((a, b) => hired(a).localeCompare(hired(b)))];
+    // 名額優先給非外語、其次外語，各自依到職日由舊到新；排在名額之後的就是要排除的
+    const byHired = (a, b) => hired(a).localeCompare(hired(b));
+    const ordered = [...adds.filter(r => !isForeign(r)).sort(byHired),
+                     ...adds.filter(isForeign).sort(byHired)];
     for (const r of ordered.slice(Math.max(room, 0))) {
       const f = isForeign(r);
       capped[f ? 'foreign' : 'other']++;
       r._errors.push(f ? `超過分享上限 ${SHARE_CAP} 人，外語單位新進者暫不加入`
-                       : `超過分享上限 ${SHARE_CAP} 人，名額不足未加入（需人工處理）`);
+                       : `超過分享上限 ${SHARE_CAP} 人，依到職日（新到舊）暫不加入`);
     }
   }
   // 供排程（⑮ notebooklm/nlm_sync.py）讀取本次判定結果

@@ -1615,6 +1615,8 @@ function injectSidebar() {
 
   window.addEventListener('message', (e) => {
     if (e.data === 'nlm-sm-close') setOpen(false);
+    // 側欄查詢筆記本標題（本擴充程式僅限「聯成人AI」筆記本，見 sidebar.js ALLOWED_NOTEBOOK）
+    else if (e.data === 'nlm-sm-title?') frame.contentWindow.postMessage({ nlmSmTitle: document.title }, '*');
   });
 
   applyGeom({});
