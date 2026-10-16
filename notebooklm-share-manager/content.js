@@ -1288,6 +1288,19 @@ function pageRpc(rpcid, params, timeoutMs = 20000) {
   });
 }
 
+// 筆記本標題：2026-10-16 起分頁標題固定為「Gemini Notebook」不含筆記本名稱，改用 rLM1Ne（讀取筆記本）
+// API 取 data[0][0]；API 失敗才退回 document.title。側欄每 0.5 秒問一次，共用同一個請求，失敗下次重試。
+// rLM1Ne 會回整本來源（實測約 21 秒），逾時放寬為 60 秒
+let nbTitleP = null;
+function notebookTitle() {
+  if (!nbTitleP) {
+    nbTitleP = pageRpc('rLM1Ne', [getNotebookId(), null, [2], null, 0], 60000)
+      .then(d => (Array.isArray(d) && Array.isArray(d[0]) && typeof d[0][0] === 'string') ? d[0][0] : '')
+      .catch(() => { nbTitleP = null; return ''; });
+  }
+  return nbTitleP.then(t => t || document.title);
+}
+
 async function apiShareStatus() {
   const nb = getNotebookId();
   if (!nb) throw new Error('找不到筆記本 ID');
@@ -1616,7 +1629,7 @@ function injectSidebar() {
   window.addEventListener('message', (e) => {
     if (e.data === 'nlm-sm-close') setOpen(false);
     // 側欄查詢筆記本標題（本擴充程式僅限「聯成人AI」筆記本，見 sidebar.js ALLOWED_NOTEBOOK）
-    else if (e.data === 'nlm-sm-title?') frame.contentWindow.postMessage({ nlmSmTitle: document.title }, '*');
+    else if (e.data === 'nlm-sm-title?') notebookTitle().then(t => frame.contentWindow.postMessage({ nlmSmTitle: t }, '*'));
   });
 
   applyGeom({});

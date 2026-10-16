@@ -86,7 +86,7 @@ async function apiCall(data) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 const ALLOWED_NOTEBOOK = '聯成人AI';
 
-// 向外層頁面（content.js）查詢筆記本標題；標題可能晚於側欄載入，最多等 15 秒
+// 向外層頁面（content.js）查詢筆記本標題；content.js 改用 rLM1Ne API 取標題（實測約 21 秒、逾時 60 秒），最多等 75 秒
 function getNotebookTitle() {
   return new Promise(resolve => {
     let tries = 0, last = '';
@@ -98,7 +98,7 @@ function getNotebookTitle() {
     };
     const done = () => { clearInterval(timer); window.removeEventListener('message', onMsg); resolve(last); };
     window.addEventListener('message', onMsg);
-    const ask = () => { if (++tries > 30) done(); else window.parent.postMessage('nlm-sm-title?', '*'); };
+    const ask = () => { if (++tries > 150) done(); else window.parent.postMessage('nlm-sm-title?', '*'); };
     const timer = setInterval(ask, 500);
     ask();
   });
