@@ -1,95 +1,42 @@
 # NotebookLM Share Manager
 
-Chrome 擴充程式，用於管理 NotebookLM 筆記本的分享用戶。
+Chrome 擴充程式（v2.0.7），在 NotebookLM 筆記本頁面上直接讀取／修改真正的分享名單。
 
-## v2.0 重點（2026-09-26）
+> 權威規格在 repo 根目錄 `系統架構與規格.md` §五之一；本檔只列安裝與操作。規則（僅限「聯成人AI」筆記本、依標籤同步、300 人上限）以規格為準。
 
-- **分享名單改走 NotebookLM 內部 API**：`inject-main.js`（MAIN world）讀頁面 `WIZ_global_data` 的 CSRF／session，直接呼叫 `/_/LabsTailwindUi/data/batchexecute`：
+## 運作方式
+
+- **僅限「聯成人AI」筆記本**：側欄以 `rLM1Ne` API 取筆記本標題，不含「聯成人AI」就拒絕載入名單與操作。
+- **分享名單走 NotebookLM 內部 API**：`inject-main.js`（MAIN world）讀頁面 `WIZ_global_data` 的 CSRF／session，直接呼叫 `/_/LabsTailwindUi/data/batchexecute`：
   - `JFMDGd` 讀取分享狀態：一次回傳全部使用者（email、權限 1擁有者/2編輯者/3檢視者、姓名）
-  - `QDyure` 新增／改權限／移除（權限 4＝移除）；新增一次最多 50 筆、改權限一次送出、移除逐筆送
+  - `QDyure` 新增／改權限／移除（權限 4＝移除）；新增每批 50 筆、改權限一次送出、移除逐筆送
   - 送出後一律**回讀名單判定成敗**（伺服器對無效請求常回空結果不報錯、成功時也可能回錯誤碼）
-  - v2.0.1：整包被拒（回 `[3]`，實測 20 筆新增全數未生效）時逐筆重送找出問題帳號；前 3 筆逐筆也全失敗視為格式問題，未生效的列改走畫面模擬。另在 console 記錄網頁版分享框實際送出的 `QDyure`（`[NLM-SM] 介面送出的 QDyure`），供比對修正參數格式
-  - 不必開分享框、不必保持畫面；API 在尚未改動任何資料前失敗時，自動退回舊的畫面模擬流程（讀取完成的提示會標示是哪種模式）
+  - 整包被拒（回 `[3]`）時逐筆重送找出問題帳號；前 3 筆逐筆也全失敗視為格式問題，未生效的列改走畫面模擬
+  - API 在尚未改動任何資料前失敗時，自動退回畫面模擬流程（讀取完成的提示會標示是哪種模式）
   - RPC 代號與參數參考 [teng-lin/notebooklm-py](https://github.com/teng-lin/notebooklm-py) `docs/rpc-reference.md`；Google 改版若失效，先比對該文件
-- **浮動視窗**（比照 CAAC 名單通知）：右緣「分享管理」頁籤開闔、可上下拖曳；視窗標題列拖曳移動、右下角拉大小、「—」縮成標題列、「⟳」重新整理、「✕」收回頁籤；位置／大小／開闔狀態記在 `chrome.storage.local`
-- 測試：`node test/api_batch.test.js`（以假伺服器驗證讀取與批次判定邏輯）
-- NotebookLM 分享只剩檢視者／編輯者兩級，CSV 的 `commenter` 視同檢視者
+- **浮動視窗**（比照 CAAC 名單通知）：右緣「分享管理」頁籤開闔、可上下拖曳；標題列拖曳移動、右下角拉大小、「—」縮成標題列、「⟳」重新整理、「✕」收回頁籤；位置／大小／開闔狀態記在 `chrome.storage.local`
+- 不需 Google Cloud 專案、OAuth 或 Drive API：manifest 權限只有 `storage`、`activeTab`、`scripting`、`tabs`，用的是瀏覽器已登入的 Google 帳號。
+
+## 安裝
+
+1. Chrome 前往 `chrome://extensions/`，右上角開啟「開發人員模式」
+2. 「載入未封裝項目」→ 選 `D:\AI-SYS\NotebookLM管理工具\notebooklm-share-manager`
+3. 開啟「聯成人AI」筆記本頁面，點右緣「分享管理」頁籤
+
+manifest 沒有 `key`，換目錄載入＝新擴充 ID，`chrome.storage.local` 的通訊錄對照與視窗位置不會帶過去，需重新上傳 Google 通訊錄 CSV。
+
+⑮ 排程維運每晚 20:00 的 `nlm_sync.py` 也載入這個目錄，改程式碼後當晚的正式同步就會用新版。
 
 ## 功能
 
-- **檢視**所有分享用戶及其權限
-- **新增**分享用戶（自動發送 Google 通知信）
-- **修改**用戶權限（檢視者 / 留言者 / 編輯者）
-- **刪除**分享用戶
-- **搜尋**分享用戶（即時過濾）
-- **CSV 批次匯入**：上傳 .csv 一次新增/更新/刪除多位用戶
-- **下載 CSV 範本**
+- **檢視**分享名單與權限，**搜尋**（即時過濾）
+- **新增**分享對象（Google 會寄分享通知信給對方）
+- **修改**權限、**移除**分享對象（擁有者不可修改或移除）
+- **CSV 批次匯入**：上傳 .csv 一次新增／更新／移除多人，可下載範本
+- **Google 通訊錄**：上傳學管下載的 Google 通訊錄 CSV，名單帶入姓名與標籤；資料存在本機
+- **依標籤同步**：依通訊錄標籤產生同步預覽（「0待刪除名單」移除、其他標籤以檢視者加入、超過 300 人依規則暫緩），確認後套用
 
----
-
-## 安裝步驟
-
-### 第一步：建立 Google Cloud 專案與 OAuth Client ID
-
-1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
-2. 建立新專案（或選擇既有專案）
-3. 左側選單 → **API 和服務** → **已啟用的 API 和服務** → 搜尋並啟用 **Google Drive API**
-4. 左側選單 → **憑證** → **建立憑證** → **OAuth 2.0 用戶端 ID**
-5. 應用程式類型選 **Chrome 應用程式**
-6. 名稱填入 `NotebookLM Share Manager`
-7. **應用程式 ID**（Extension ID）先暫留，等載入擴充程式後再填（見下方）
-8. 建立後複製 **用戶端 ID**（格式：`xxxxxxxx.apps.googleusercontent.com`）
-
-### 第二步：填入 Client ID
-
-開啟 `manifest.json`，找到：
-
-```json
-"oauth2": {
-  "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
-```
-
-將 `YOUR_CLIENT_ID.apps.googleusercontent.com` 替換為您的用戶端 ID。
-
-### 第三步：產生圖示
-
-1. 用瀏覽器開啟 `generate-icons.html`
-2. 點擊「產生並下載圖示」
-3. 將下載的 `icon16.png`、`icon48.png`、`icon128.png` 放入 `icons/` 資料夾
-
-### 第四步：載入擴充程式
-
-1. 開啟 Chrome，前往 `chrome://extensions/`
-2. 右上角開啟「開發人員模式」
-3. 點擊「載入未封裝項目」
-4. 選擇 `notebooklm-share-manager` 資料夾
-
-### 第五步：回填 Extension ID
-
-1. 載入後，在 `chrome://extensions/` 頁面複製擴充程式的 **ID**（32 個字元）
-2. 回到 Google Cloud Console → 憑證 → 編輯剛才的 OAuth Client
-3. 在「應用程式 ID」填入 Extension ID → 儲存
-
----
-
-## 使用方式
-
-1. 前往 [NotebookLM](https://notebooklm.google.com/) 並開啟任一筆記本
-2. 點擊 Chrome 工具列的擴充程式圖示
-3. 首次使用會彈出 Google 登入授權視窗，請同意授權
-
-### 分享用戶管理
-
-| 操作 | 說明 |
-|------|------|
-| 新增 | 點擊「+ 新增」，輸入 email 並選擇權限後確認 |
-| 修改 | 點擊用戶列的鉛筆圖示，選擇新權限後儲存 |
-| 刪除 | 點擊用戶列的垃圾桶圖示後確認 |
-| 搜尋 | 在搜尋框輸入 email 或姓名即時過濾 |
-
-### CSV 批次匯入
-
-**CSV 格式：**
+### CSV 格式
 
 ```csv
 email,role,action
@@ -101,34 +48,27 @@ charlie@example.com,,remove
 | 欄位 | 說明 |
 |------|------|
 | email | Google 帳號電子郵件 |
-| role | `reader`（檢視）/ `commenter`（留言）/ `writer`（編輯）|
-| action | `add`（新增）/ `update`（更新）/ `remove`（移除）|
-
-> `remove` 操作的 role 欄位可以留空。
-
-**操作步驟：**
-1. 切換到「CSV 匯入/匯出」頁籤
-2. 拖曳 .csv 檔案至上傳區，或點擊「選擇檔案」
-3. 確認預覽表格中的資料無誤（錯誤列會標示紅色）
-4. 點擊「套用變更」執行批次操作
-5. 完成後顯示逐列執行結果
-
----
+| role | `reader`（檢視者）/ `writer`（編輯者）。NotebookLM 分享只剩這兩級，`commenter` 仍可填但視同檢視者 |
+| action | `add`（新增）/ `update`（更新）/ `remove`（移除）；`remove` 的 role 可留空 |
 
 ## 權限說明
 
 | 權限 | 用途 |
 |------|------|
-| `identity` | Google OAuth2 登入授權 |
-| `storage` | 儲存暫存設定 |
-| `activeTab` | 讀取目前分頁 URL 以取得筆記本 ID |
-| `drive` scope | 透過 Google Drive API 管理分享權限 |
+| `storage` | 存通訊錄對照、視窗位置與開闔狀態 |
+| `activeTab`、`tabs` | 找到開著的 NotebookLM 筆記本分頁，轉送側欄指令給 content script |
+| `scripting` | manifest 有宣告，但程式目前沒有呼叫 `chrome.scripting`（content script 由 manifest 的 `content_scripts` 注入） |
+| host：`notebooklm.google.com`、`notebook.google.com` | 讀寫該網域的分享名單 |
 
----
+## 測試
+
+```
+node test/api_batch.test.js     # 假伺服器驗證讀取、批次判定、回讀優先、失敗退回
+node test/sync_labels.test.js   # 依標籤同步與 300 人上限排除
+```
 
 ## 注意事項
 
-- 只有筆記本的**擁有者**才能管理分享用戶
-- 擁有者本身不可被刪除或修改
-- 新增用戶時 Google 會自動發送分享通知信給對方
+- 只有筆記本**擁有者**能讀到完整名單、管理分享
+- 新增時 Google 會寄分享通知信，誤加的人也會收到
 - CSV 批次匯入遇到錯誤會跳過該列繼續執行，並在結果中顯示原因
